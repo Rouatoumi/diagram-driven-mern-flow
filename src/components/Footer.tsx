@@ -12,7 +12,7 @@ const Footer = () => {
             <p className="text-gray-600 mb-4">
               The cutest online auction platform where you can find unique items and place bids on amazing products.
             </p>
-            <div className="flex gap-4">
+            <div className="flex gap-4" >
               <a href="#" className="text-purple-600 hover:text-pink-600 transition-colors">
                 <Instagram size={20} />
               </a>
