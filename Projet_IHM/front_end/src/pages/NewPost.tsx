@@ -24,8 +24,8 @@ const formSchema = z.object({
   currentPrice: z.number().min(0, 'Price must be positive').optional(),
   bidStartDate: z.date(),
   bidEndDate: z.date(),
-  categoryId: z.string().min(1, 'Please select a category'),
-  subCategoryId: z.string().min(1, 'Please select a subcategory'),
+  categoryId: z.string().optional()/* .min(1, 'Please select a category') */,
+  subCategoryId: z.string().optional()/* .min(1, 'Please select a subcategory') */,
 });
 
 type FormValues = z.infer<typeof formSchema>;

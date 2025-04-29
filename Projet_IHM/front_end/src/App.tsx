@@ -10,7 +10,8 @@ import NewPost from "./pages/NewPost";
 import MyPosts from "./pages/MyPosts";
 import BiddingHistory from "./pages/BiddingHistory";
 import OnGoingBids from "./pages/OnGoingBids";
-import AllPosts from "./pages/AllPosts";
+import AllPosts from "./pages/AllPosts"; 
+import Auctions from "./pages/Auctions";
 
 function App() {
   return (
@@ -30,7 +31,8 @@ function App() {
             <Route path="/all_posts" element={<AllPosts />}/>
             <Route path="/new_post" element={<NewPost />} />
             <Route path="/my_posts" element={<MyPosts />} />
-              
+            <Route path="/auctions" element={<Auctions />} />
+
               {/* Add other post-related routes here */}
             <Route path="/bids/history" element={<BiddingHistory />} />
             <Route path="/bids/ongoing" element={<OnGoingBids />} />

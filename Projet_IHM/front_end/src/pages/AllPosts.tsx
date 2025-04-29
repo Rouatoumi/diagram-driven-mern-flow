@@ -11,7 +11,7 @@ export default function AllPost() {
   const [loading, setLoading] = useState(true);
   ;
 
-  function handlePlaceBid(product) {
+   function handlePlaceBid(product) {
     console.log('Placing bid for product:', product);
     const user = localStorage.getItem('user')// TODO: replace with actual logged-in user ID
     const bidder = user ? JSON.parse(user) : null;
@@ -31,8 +31,8 @@ export default function AllPost() {
       console.error('Error placing bid:', error);
       alert('Failed to place bid.');
     });
-  }
-  
+  } 
+
   useEffect(() => {
     async function fetchProducts() {
       try {

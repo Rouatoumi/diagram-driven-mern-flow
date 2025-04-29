@@ -16,14 +16,13 @@ exports.loginUser = async (req, res) => {
         console.log(email);
         console.log(user);
         if (!user) {
-           
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
         // Check password
-        const isMatch =password == user.password;
+        const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            console.log('User not found');
+            console.log('Invalid password');
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 

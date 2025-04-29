@@ -1,150 +1,233 @@
-
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Heart, Clock, Search } from "lucide-react";
+import { Heart, Clock, Search, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 
-// Mock data for auctions
-const mockAuctions = [
-  {
-    id: "1",
-    title: "Vintage Polaroid Camera",
-    category: "Collectibles",
-    currentBid: 120,
-    timeLeft: "2 days 5 hours",
-    imageUrl: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&q=80",
-    bids: 8
-  },
-  {
-    id: "2",
-    title: "Gaming Laptop (2023 Model)",
-    category: "Electronics",
-    currentBid: 850,
-    timeLeft: "5 hours 23 minutes",
-    imageUrl: "https://images.unsplash.com/photo-1593642632823-8f785ba67e45?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&q=80",
-    bids: 12
-  },
-  {
-    id: "3",
-    title: "Vintage Leather Jacket",
-    category: "Fashion",
-    currentBid: 75,
-    timeLeft: "1 day 12 hours",
-    imageUrl: "https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&q=80",
-    bids: 5
-  },
-  {
-    id: "4",
-    title: "Antique Wooden Desk",
-    category: "Home & Garden",
-    currentBid: 320,
-    timeLeft: "3 days 9 hours",
-    imageUrl: "https://images.unsplash.com/photo-1595428774223-ef52624120d2?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&q=80",
-    bids: 4
-  },
-  {
-    id: "5",
-    title: "Limited Edition Vinyl Record",
-    category: "Collectibles",
-    currentBid: 45,
-    timeLeft: "8 hours 17 minutes",
-    imageUrl: "https://images.unsplash.com/photo-1603048588665-791ca91d0af6?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&q=80",
-    bids: 7
-  },
-  {
-    id: "6",
-    title: "Professional DSLR Camera",
-    category: "Electronics",
-    currentBid: 1250,
-    timeLeft: "4 days 2 hours",
-    imageUrl: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&q=80",
-    bids: 20
-  },
-  {
-    id: "7",
-    title: "Handcrafted Ceramic Vase",
-    category: "Home & Garden",
-    currentBid: 85,
-    timeLeft: "1 day 20 hours",
-    imageUrl: "https://images.unsplash.com/photo-1578913685467-79e72f038686?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&q=80",
-    bids: 9
-  },
-  {
-    id: "8",
-    title: "Designer Handbag",
-    category: "Fashion",
-    currentBid: 590,
-    timeLeft: "2 days 15 hours",
-    imageUrl: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&q=80",
-    bids: 15
-  }
-];
+interface Product {
+  _id: string;
+  name: string;
+  description: string;
+  images: string[];
+  startingPrice: number;
+  currentPrice: number;
+  bidStartDate: Date;
+  bidEndDate: Date;
+  subCategoryId: string;
+  ownerId: string;
+  ownerEmail: string;
+  buyerId?: string;
+}
 
 const Auctions = () => {
-  const [auctions, setAuctions] = useState(mockAuctions);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [bidAmount, setBidAmount] = useState("");
+  const [isBidDialogOpen, setIsBidDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  // Filter and sort auctions (this would typically be done on the server)
+  // Fetch products data with optional category filter
+  const fetchProducts = async (category: string = "all") => {
+    try {
+      let url = 'http://localhost:3000/api/products';
+      if (category !== "all") {
+        url = `http://localhost:3000/api/categories/${category}`;
+      }
+
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch products');
+      const data = await response.json();
+      setProducts(data);
+      setFilteredProducts(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial fetch and fetch when category changes
   useEffect(() => {
-    let filtered = [...mockAuctions];
+    fetchProducts(selectedCategory);
+  }, [selectedCategory, toast]);
+
+  // Handle search and sorting (frontend only as these might be quick operations)
+  useEffect(() => {
+    if (loading) return;
     
-    // Apply search filter
+    let result = [...products];
+    
     if (searchQuery) {
-      filtered = filtered.filter(auction =>
-        auction.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      result = result.filter(product =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()))
     }
     
-    // Apply category filter
-    if (selectedCategory !== "all") {
-      filtered = filtered.filter(auction =>
-        auction.category.toLowerCase() === selectedCategory.toLowerCase()
-      );
-    }
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case "price-high": return b.currentPrice - a.currentPrice;
+        case "price-low": return a.currentPrice - b.currentPrice;
+        case "ending-soon": 
+          return new Date(a.bidEndDate).getTime() - new Date(b.bidEndDate).getTime();
+        default: // newest
+          return new Date(b.bidStartDate).getTime() - new Date(a.bidStartDate).getTime();
+      }
+    });
     
-    // Apply sort
-    switch (sortBy) {
-      case "price-high":
-        filtered.sort((a, b) => b.currentBid - a.currentBid);
-        break;
-      case "price-low":
-        filtered.sort((a, b) => a.currentBid - b.currentBid);
-        break;
-      case "ending-soon":
-        // This is a simplified sort - in real app, you'd compare actual dates
-        filtered.sort((a, b) => a.timeLeft.localeCompare(b.timeLeft));
-        break;
-      case "most-bids":
-        filtered.sort((a, b) => b.bids - a.bids);
-        break;
-      default: // newest
-        // For this mock, we'll just use the original order
-        break;
-    }
+    setFilteredProducts(result);
+  }, [searchQuery, sortBy, products, loading]);
+
+  const getTimeLeft = (endDate: Date) => {
+    const now = new Date();
+    const end = new Date(endDate);
+    const diff = end.getTime() - now.getTime();
     
-    setAuctions(filtered);
-  }, [searchQuery, sortBy, selectedCategory]);
+    if (diff <= 0) return "Auction ended";
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    
+    return `${days}d ${hours}h left`;
+  };
+
+  const handleBidSubmit = async () => {
+    if (!selectedProduct || !bidAmount) return;
+
+    const now = new Date();
+    const bidEndDate = new Date(selectedProduct.bidEndDate);
+    if (now > bidEndDate) {
+      toast({
+        title: "Auction Ended",
+        description: "This auction has ended, and no more bids can be placed.",
+        variant: "destructive",
+      });
+      setIsBidDialogOpen(false);
+      return;
+    }
+
+    const numericBid = parseFloat(bidAmount);
+    if (isNaN(numericBid) || numericBid <= (selectedProduct?.currentPrice || 0)) {
+      toast({ 
+        title: "Invalid amount", 
+        description: `Bid must be higher than $${selectedProduct?.currentPrice.toFixed(2)}`,
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error("Please login to place a bid");
+      }
+
+      const response = await fetch('http://localhost:3000/api/bids', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token.trim()}` 
+        },
+        body: JSON.stringify({
+          productId: selectedProduct._id,
+          bidAmount: numericBid,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (errorData.message.includes("Authentication") || errorData.message.includes("Unauthorized")) {
+          localStorage.removeItem('token');
+          toast({
+            title: "Session Expired",
+            description: "Your session has expired. Please log in again to place a bid.",
+            variant: "destructive",
+          });
+          navigate('/login');
+          return;
+        } else if (errorData.message.includes("Product not found")) {
+          throw new Error("This product is no longer available");
+        } else if (errorData.message.includes("Bid must be higher")) {
+          throw new Error(errorData.message);
+        }
+        throw new Error(errorData.message || "Bid failed");
+      }
+
+      const responseData = await response.json();
+
+      toast({
+        title: "Bid Placed!",
+        description: `Your $${numericBid.toFixed(2)} bid has been placed, and a notification has been sent to the owner.`,
+      });
+
+      // Refresh product data
+      fetchProducts(selectedCategory);
+
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+      setIsBidDialogOpen(false);
+      setBidAmount("");
+    }
+  };
+
+  if (loading) {
+    return (
+      <>
+        <Navbar />
+        <div className="container mx-auto px-4 py-8 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4">Loading auctions...</p>
+        </div>
+        <Footer />
+      </>
+    );
+  }
 
   return (
     <>
-      <Navbar />
+      <Toaster />
+      
       <div className="container mx-auto px-4 py-8">
+        {/* Header */}
         <div className="max-w-4xl mx-auto text-center mb-12">
           <h1 className="text-3xl font-bold mb-4">Discover Auctions</h1>
           <p className="text-gray-600">
-            Browse through our wide selection of auctions and find the perfect item you've been looking for.
+            Browse through our wide selection of auctions and find the perfect item.
           </p>
         </div>
         
-        {/* Filters */}
+        {/* Search and Filter Section */}
         <div className="mb-8 bg-white p-6 rounded-lg shadow-sm border">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
@@ -164,7 +247,13 @@ const Auctions = () => {
             
             <div>
               <label htmlFor="category" className="text-sm font-medium text-gray-700 mb-1 block">Category</label>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <Select 
+                value={selectedCategory} 
+                onValueChange={(value) => {
+                  setSelectedCategory(value);
+                  setLoading(true); // Show loading when changing category
+                }}
+              >
                 <SelectTrigger id="category">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
@@ -189,41 +278,50 @@ const Auctions = () => {
                   <SelectItem value="price-high">Price (High to Low)</SelectItem>
                   <SelectItem value="price-low">Price (Low to High)</SelectItem>
                   <SelectItem value="ending-soon">Ending Soon</SelectItem>
-                  <SelectItem value="most-bids">Most Bids</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
         </div>
         
-        {/* Auction Grid */}
+        {/* Auction Items Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {auctions.length > 0 ? (
-            auctions.map((auction) => (
-              <Card key={auction.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                <Link to={`/auctions/${auction.id}`} className="block">
+          {filteredProducts.length > 0 ? (
+            filteredProducts.map((product) => (
+              <Card key={product._id} className="overflow-hidden hover:shadow-md transition-shadow">
+                <Link to={`/auctions/${product._id}`} className="block">
                   <div className="aspect-square relative overflow-hidden bg-gray-100">
-                    <img 
-                      src={auction.imageUrl} 
-                      alt={auction.title}
-                      className="object-cover w-full h-full transition-transform hover:scale-105"
-                    />
-                    <Badge className="absolute top-2 left-2 bg-pink-500">{auction.category}</Badge>
+                    {product.images?.length > 0 ? (
+                      <img 
+                        src={product.images[0]} 
+                        alt={product.name}
+                        className="object-cover w-full h-full transition-transform hover:scale-105"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                        <span className="text-gray-500">No Image</span>
+                      </div>
+                    )}
+                    <Badge className="absolute top-2 left-2 bg-pink-500">
+                      {product.subCategoryId || 'Uncategorized'}
+                    </Badge>
                   </div>
                 </Link>
                 <CardHeader className="p-4 pb-2">
-                  <CardTitle className="text-lg">{auction.title}</CardTitle>
+                  <CardTitle className="text-lg">{product.name}</CardTitle>
                   <CardDescription className="flex items-center gap-1 text-gray-600">
                     <Clock size={14} />
-                    <span>{auction.timeLeft}</span>
+                    <span>{getTimeLeft(product.bidEndDate)}</span>
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
                   <div className="flex justify-between items-center">
                     <div>
-                      <div className="text-sm text-gray-500">Current Bid</div>
-                      <div className="font-bold">${auction.currentBid.toFixed(2)}</div>
-                      <div className="text-xs text-gray-500">{auction.bids} bids</div>
+                      <div className="text-sm text-gray-500">Current Price</div>
+                      <div className="font-bold">${product.currentPrice.toFixed(2)}</div>
+                      <div className="text-xs text-gray-500">
+                        Starting at ${product.startingPrice.toFixed(2)}
+                      </div>
                     </div>
                     <Button variant="outline" size="sm" className="rounded-full">
                       <Heart size={16} />
@@ -231,7 +329,14 @@ const Auctions = () => {
                   </div>
                 </CardContent>
                 <CardFooter className="p-4 pt-0">
-                  <Button className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700">
+                  <Button 
+                    className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
+                    onClick={() => {
+                      setSelectedProduct(product);
+                      setIsBidDialogOpen(true);
+                    }}
+                    disabled={!localStorage.getItem('token')}
+                  >
                     Bid Now
                   </Button>
                 </CardFooter>
@@ -253,6 +358,55 @@ const Auctions = () => {
           )}
         </div>
       </div>
+
+      {/* Bid Dialog */}
+      <Dialog open={isBidDialogOpen} onOpenChange={setIsBidDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Place a Bid</DialogTitle>
+            <DialogDescription>
+              You're bidding on: {selectedProduct?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Current Price</label>
+              <p className="font-bold">${selectedProduct?.currentPrice.toFixed(2)}</p>
+            </div>
+            <div>
+              <label htmlFor="bidAmount" className="block text-sm font-medium mb-1">
+                Your Bid Amount
+              </label>
+              <Input
+                id="bidAmount"
+                type="number"
+                min={selectedProduct ? selectedProduct.currentPrice + 0.01 : undefined}
+                step="0.01"
+                value={bidAmount}
+                onChange={(e) => setBidAmount(e.target.value)}
+                placeholder={selectedProduct ? 
+                  `Min $${(selectedProduct.currentPrice + 1).toFixed(2)}` : 
+                  "Enter amount"}
+              />
+            </div>
+            <Button 
+              className="w-full"
+              onClick={handleBidSubmit}
+              disabled={isSubmitting || !bidAmount}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                "Submit Bid"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Footer />
     </>
   );
