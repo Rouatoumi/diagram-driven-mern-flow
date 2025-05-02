@@ -1,14 +1,17 @@
-
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { Heart, Clock, ChevronRight } from "lucide-react";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import { Heart, Clock } from "lucide-react";
+import axios from "axios";
+
+// Dialog components from shadcn
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 export default function MyPost() {
-  // Featured categories
+  // Categories (static)
   const categories = [
     { name: 'Electronics', icon: '📱', color: 'bg-blue-100 text-blue-800' },
     { name: 'Collectibles', icon: '🏆', color: 'bg-amber-100 text-amber-800' },
@@ -17,39 +20,45 @@ export default function MyPost() {
     { name: 'Art', icon: '🎨', color: 'bg-purple-100 text-purple-800' },
     { name: 'Toys & Games', icon: '🎮', color: 'bg-indigo-100 text-indigo-800' }
   ];
-  
-  // Featured auctions
-  const featuredAuctions = [
-    { 
-      id: '1', 
-      title: 'Vintage Polaroid Camera', 
-      category: 'Collectibles', 
-      currentBid: 120, 
-      timeLeft: '2 days', 
-      image: 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&q=80'
-    },
-    { 
-      id: '2', 
-      title: 'Gaming Laptop', 
-      category: 'Electronics', 
-      currentBid: 850, 
-      timeLeft: '5 hours', 
-      image: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&q=80'
-    },
-    { 
-      id: '3', 
-      title: 'Leather Jacket', 
-      category: 'Fashion', 
-      currentBid: 75, 
-      timeLeft: '1 day', 
-      image: 'https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&q=80'
-    }
-  ];
+
+  // Auctions fetched from backend
+  const [featuredAuctions, setFeaturedAuctions] = useState([]);
+
+  // For popup (dialog)
+  const [selectedAuction, setSelectedAuction] = useState(null);
+  const [bidAmount, setBidAmount] = useState("");
+
+  useEffect(() => {
+    // Fetch products
+    axios
+      .get("http://localhost:3000/api/products")
+      .then((response) => {
+        console.log("Fetched products:", response.data);
+        const mappedAuctions = response.data.map((product) => ({
+          id: product._id,
+          title: product.name,
+          category: product.category || "General",
+          currentBid: product.startingPrice || 0,
+          timeLeft: "3 days",
+          image: product.image || "https://via.placeholder.com/400x300?text=No+Image",
+        }));
+        setFeaturedAuctions(mappedAuctions);
+      })
+      .catch((error) => {
+        console.error("Error fetching products:", error);
+      });
+  }, []);
+
+  // Handle bid submit
+  const handleBidSubmit = () => {
+    console.log("Bid submitted for", selectedAuction.title, "amount:", bidAmount);
+    // You can call API to submit bid here
+    setBidAmount("");
+    setSelectedAuction(null);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white">
-
-      
       {/* Featured Auctions */}
       <section className="py-16 bg-purple-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -59,7 +68,7 @@ export default function MyPost() {
               <p className="text-gray-600">Current hot items you might be interested in</p>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {featuredAuctions.map((auction) => (
               <Card key={auction.id} className="overflow-hidden hover:shadow-md transition-shadow">
@@ -92,17 +101,45 @@ export default function MyPost() {
                   </div>
                 </CardContent>
                 <CardFooter className="p-4 pt-0">
-                  <Button className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700">
-                    Bid Now
-                  </Button>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button 
+                        className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
+                        onClick={() => setSelectedAuction(auction)}
+                      >
+                        Details
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      {selectedAuction && (
+                        <>
+                          <DialogHeader>
+                            <DialogTitle>Place Your Bid</DialogTitle>
+                            <DialogDescription>
+                              You're bidding on <strong>{selectedAuction.title}</strong>. Enter your offer below.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="mt-4">
+                            <Input 
+                              type="number" 
+                              placeholder="Your bid amount" 
+                              value={bidAmount} 
+                              onChange={(e) => setBidAmount(e.target.value)} 
+                            />
+                          </div>
+                          <DialogFooter className="mt-4">
+                            <Button onClick={handleBidSubmit}>Submit Bid</Button>
+                          </DialogFooter>
+                        </>
+                      )}
+                    </DialogContent>
+                  </Dialog>
                 </CardFooter>
               </Card>
             ))}
           </div>
         </div>
       </section>
-      
-     
     </div>
   );
 };

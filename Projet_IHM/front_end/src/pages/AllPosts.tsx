@@ -5,33 +5,44 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { Heart, Clock } from "lucide-react";
 import axios from "axios";
+import AuctionDetailsModal from "./AuctionDetailsModal";
+
+import { toast } from "@/components/ui/use-toast";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/useAuth";
+
+
+
+function BidButton({ product, onOpenModal }) {
+  const handleOpenModal = () => {
+    onOpenModal(product._id); // Pass the product ID to the modal
+  };
+
+  return (
+    <Button
+      onClick={handleOpenModal}
+      className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
+    >
+      Bid Now
+    </Button>
+  );
+}
 
 export default function AllPost() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  ;
+  const [selectedAuctionId, setSelectedAuctionId] = useState(null); // Track the selected auction ID
+  const [isModalOpen, setIsModalOpen] = useState(false); // Track modal state
 
-   function handlePlaceBid(product) {
-    console.log('Placing bid for product:', product);
-    const user = localStorage.getItem('user')// TODO: replace with actual logged-in user ID
-    const bidder = user ? JSON.parse(user) : null;
-    console.log('product:', product);
-    const bidAmount = product.currentPrice + product.startingPrice /10; // Example: +1 over current bid
-  
-    axios.post('http://localhost:3000/api/bids', {
-      productId: product._id,
-      bidderId: bidder._id,
-      bidAmount: bidAmount
-    })
-    .then(response => {
-      console.log('Bid placed successfully!', response.data);
-      alert('Bid placed successfully!');
-    })
-    .catch(error => {
-      console.error('Error placing bid:', error);
-      alert('Failed to place bid.');
-    });
-  } 
+  const handleOpenModal = (auctionId) => {
+    setSelectedAuctionId(auctionId);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedAuctionId(null);
+  };
 
   useEffect(() => {
     async function fetchProducts() {
@@ -40,6 +51,11 @@ export default function AllPost() {
         setProducts(response.data);
       } catch (error) {
         console.error("Error fetching products:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load products",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
@@ -59,21 +75,32 @@ export default function AllPost() {
           <div className="flex justify-between items-end mb-8">
             <div>
               <h2 className="text-3xl font-bold mb-2">Featured Auctions</h2>
-              <p className="text-gray-600">Current hot items you might be interested in</p>
+              <p className="text-gray-600">
+                Current hot items you might be interested in
+              </p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {products.map((product) => (
-              <Card key={product._id} className="overflow-hidden hover:shadow-md transition-shadow">
+              <Card
+                key={product._id}
+                className="overflow-hidden hover:shadow-md transition-shadow"
+              >
                 <Link to={`/auctions/${product._id}`} className="block">
                   <div className="aspect-video relative overflow-hidden bg-gray-100">
-                    <img 
-                      src={product.images && product.images.length > 0 ? product.images[0] : '/placeholder.png'} 
+                    <img
+                      src={
+                        product.images && product.images.length > 0
+                          ? product.images[0]
+                          : "/placeholder.png"
+                      }
                       alt={product.name}
                       className="object-cover w-full h-full transition-transform hover:scale-105"
                     />
-                    <Badge className="absolute top-2 left-2 bg-pink-500">{product.name}</Badge>
+                    <Badge className="absolute top-2 left-2 bg-pink-500">
+                      Live Auction
+                    </Badge>
                   </div>
                 </Link>
                 <CardHeader className="p-4 pb-2">
@@ -89,7 +116,14 @@ export default function AllPost() {
                   <div className="flex justify-between items-center">
                     <div>
                       <div className="text-sm text-gray-500">Current Bid</div>
-                      <div className="font-bold text-lg">${product.currentPrice?.toFixed(2) || product.startingPrice?.toFixed(2)}</div>
+                      <div className="font-bold text-lg">
+                        $
+                        {product.currentPrice?.toFixed(2) ||
+                          product.startingPrice?.toFixed(2)}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {product.bids?.length || 0} bids placed
+                      </div>
                     </div>
                     <Button variant="outline" size="sm" className="rounded-full">
                       <Heart size={16} />
@@ -97,19 +131,23 @@ export default function AllPost() {
                   </div>
                 </CardContent>
                 <CardFooter className="p-4 pt-0">
-                  <Button 
-                    className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
-                    onClick={() => handlePlaceBid(product)}
-                  >
-                    Bid Now
-                  </Button>
+                  <BidButton product={product} onOpenModal={handleOpenModal} />
                 </CardFooter>
-
               </Card>
             ))}
           </div>
         </div>
       </section>
+
+      {/* Auction Details Modal */}
+      {isModalOpen && (
+  <AuctionDetailsModal
+    auctionId={selectedAuctionId}
+    isOpen={isModalOpen}
+    onClose={handleCloseModal}
+  />
+)}
+
     </div>
   );
 }

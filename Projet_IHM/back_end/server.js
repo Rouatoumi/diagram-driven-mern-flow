@@ -7,12 +7,13 @@ const productRoutes = require("./routes/productRoutes");
 const userRoutes = require("./routes/userRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const subCategoryRoutes = require("./routes/subCategoryRoutes");
-const bidRoutes = require("./routes/bidRoutes");
 const authRoutes = require("./routes/authRoutes");
 const uploadRoutes = require("./routes/uploadRoutes");
 const app = express();
 const port = 3000;
 const notifyRoutes = require("./routes/notifyroute");
+const bidRoutes = require("./routes/bidRoutes");
+const { auth } = require('./middleware/authMiddleware');
 
 // Middleware pour lire JSON
 app.use(express.json());

@@ -34,7 +34,7 @@ const sidebarItems = [
   {
     name: "Browse Posts",
     icon: Filter,
-    href: "/all_posts"
+    href: "/auctions"
   },
   {
     name: "Ongoing Bids",

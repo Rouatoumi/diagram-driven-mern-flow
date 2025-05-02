@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.11",
     "nodemailer": "^6.10.1"
   }
 }

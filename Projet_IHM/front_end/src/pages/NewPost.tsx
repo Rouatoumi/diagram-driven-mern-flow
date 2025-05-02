@@ -14,8 +14,9 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import axios from 'axios';
 import { toast } from '@/components/ui/use-toast';
+import { Toaster } from "@/components/ui/toaster";
 
-// Define validation schema
+// Define validation schema - removed biddingType
 const formSchema = z.object({
   name: z.string().min(3, 'Name must be at least 3 characters'),
   description: z.string().optional(),
@@ -24,8 +25,8 @@ const formSchema = z.object({
   currentPrice: z.number().min(0, 'Price must be positive').optional(),
   bidStartDate: z.date(),
   bidEndDate: z.date(),
-  categoryId: z.string().optional()/* .min(1, 'Please select a category') */,
-  subCategoryId: z.string().optional()/* .min(1, 'Please select a subcategory') */,
+  categoryId: z.string().optional(),
+  subCategoryId: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -69,7 +70,6 @@ export default function NewPost() {
       try {
         const response = await axios.get('http://localhost:3000/api/categories');
         setCategories(response.data);
-        console.log('Categories:', response.data);
       } catch (error) {
         toast({
           title: 'Error',
@@ -89,52 +89,84 @@ export default function NewPost() {
     const category = categories.find(c => c._id === categoryId);
     setSelectedCategory(category || null);
     setValue('categoryId', categoryId);
-    setValue('subCategoryId', ''); // Reset subcategory when category changes
+    setValue('subCategoryId', '');
   };
 
   const onSubmit = async (data: FormValues) => {
     try {
       setIsSubmitting(true);
+      
+      // 1. Verify authentication
+      if (!user?._id || !user?.email) {
+        toast({
+          title: 'Error',
+          description: 'User not authenticated',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // 2. Handle image uploads
       let imageUrls: string[] = [];
       if (selectedImages.length > 0) {
         const formData = new FormData();
         selectedImages.forEach((file) => {
           formData.append('images', file);
         });
-  
-        // Send images to server to save them
-        const uploadRes = await axios.post('http://localhost:3000/api/upload', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        console.log('Upload response:', uploadRes);
-        imageUrls = uploadRes.data.imagePaths; // expecting server returns array of <URL>
-        console.log('in new post Image URLs:', imageUrls);
+
+        const uploadRes = await axios.post(
+          'http://localhost:3000/api/upload', 
+          formData,
+          {
+            headers: { 
+              'Content-Type': 'multipart/form-data',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          }
+        );
+        imageUrls = uploadRes.data.imagePaths;
       }
-      const { categoryId, ...restData } = data;
 
+      // 3. Prepare the product data - removed biddingType
       const postData = {
-        ...restData,
-        ownerId: user?._id,
+        name: data.name,
+        description: data.description || '',
         images: imageUrls,
-        currentPrice: data.startingPrice,
-        bidStartDate: data.bidStartDate.toISOString(),
-        bidEndDate: data.bidEndDate.toISOString(),
+        startingPrice: Number(data.startingPrice),
+        currentPrice: Number(data.startingPrice),
+        bidStartDate: new Date(data.bidStartDate).toISOString(),
+        bidEndDate: new Date(data.bidEndDate).toISOString(),
+        subCategoryId: data.subCategoryId || null,
+        ownerId: user._id,
+        ownerEmail: user.email,
       };
-      
-      console.log('Submitting this data:', postData);
 
-      const response = await axios.post('http://localhost:3000/api/products', postData);
-      
+      console.log('Submitting product:', postData);
+      const response = await axios.post(
+        'http://localhost:3000/api/products', 
+        postData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
       toast({
         title: 'Success!',
-        description: 'Your product has been listed for auction.',
+        description: 'Product created successfully',
       });
-      
-      // window.location.href = `/products/${response.data._id}`;
-    } catch (error) {
+
+    } catch (error: any) {
+      console.error('Submission error:', {
+        message: error.message,
+        response: error.response?.data,
+        stack: error.stack
+      });
+
       toast({
         title: 'Error',
-        description: 'Failed to create product listing.',
+        description: error.response?.data?.message || 'Failed to create product',
         variant: 'destructive',
       });
     } finally {
@@ -170,7 +202,6 @@ export default function NewPost() {
           {errors.description && <p className="text-sm text-red-500">{errors.description.message}</p>}
         </div>
 
-        {/* Image URL */}
         {/* Image Upload */}
         <div className="space-y-2">
           <Label htmlFor="images">Upload Images (Max 5)</Label>
@@ -195,14 +226,13 @@ export default function NewPost() {
           {selectedImages.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
               {selectedImages.map((file, idx) => (
-                <div key={idx} className="text-xs text-gray-500">
+                <div key={`image-${idx}`} className="text-xs text-gray-500">
                   {file.name}
                 </div>
               ))}
             </div>
           )}
         </div>
-
 
         {/* Starting Price */}
         <div className="space-y-2">
@@ -213,13 +243,13 @@ export default function NewPost() {
             {...register('startingPrice', { valueAsNumber: true })}
             placeholder="0.00"
             step="0.01"
+            min="0"
           />
           {errors.startingPrice && <p className="text-sm text-red-500">{errors.startingPrice.message}</p>}
         </div>
 
         {/* Bid Dates */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Start Date */}
           <div className="space-y-2">
             <Label>Bid Start Date *</Label>
             <Popover>
@@ -251,7 +281,6 @@ export default function NewPost() {
             {errors.bidStartDate && <p className="text-sm text-red-500">{errors.bidStartDate.message}</p>}
           </div>
 
-          {/* End Date */}
           <div className="space-y-2">
             <Label>Bid End Date *</Label>
             <Popover>
@@ -296,7 +325,7 @@ export default function NewPost() {
           >
             <option value="">Select a category</option>
             {categories.map((category) => (
-              <option key={category._id} value={category._id}>
+              <option key={`cat-${category._id}`} value={category._id}>
                 {category.name}
               </option>
             ))}
@@ -313,9 +342,8 @@ export default function NewPost() {
             disabled={!selectedCategory}
           >
             <option value="">Select a subcategory</option>
-            
             {selectedCategory?.subCategories.map((subCategory) => (
-              <option key={subCategory.id} value={subCategory.id}>
+              <option key={`subcat-${subCategory.id}`} value={subCategory.id}>
                 {subCategory.name}
               </option>
             ))}
@@ -327,6 +355,7 @@ export default function NewPost() {
         <Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? 'Creating...' : 'Create Auction'}
         </Button>
+        <Toaster/>
       </form>
     </div>
   );

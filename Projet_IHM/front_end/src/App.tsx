@@ -12,6 +12,9 @@ import BiddingHistory from "./pages/BiddingHistory";
 import OnGoingBids from "./pages/OnGoingBids";
 import AllPosts from "./pages/AllPosts"; 
 import Auctions from "./pages/Auctions";
+import AuctionDetail from "./pages/AuctionDetail";
+import AuctionDetails from "./pages/AuctionDetail";
+import ProfileSettings from "./pages/Profile";
 
 function App() {
   return (
@@ -26,12 +29,15 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
-            
             {/* Posts routes */}
+            <Route path="/AuctionDetails" element={<AuctionDetails />}/>
+            <Route path="/ProfileSettings" element={<ProfileSettings />} />
+
             <Route path="/all_posts" element={<AllPosts />}/>
             <Route path="/new_post" element={<NewPost />} />
             <Route path="/my_posts" element={<MyPosts />} />
             <Route path="/auctions" element={<Auctions />} />
+            <Route path="/auction_details/:id" element={<AuctionDetail />} />
 
               {/* Add other post-related routes here */}
             <Route path="/bids/history" element={<BiddingHistory />} />
