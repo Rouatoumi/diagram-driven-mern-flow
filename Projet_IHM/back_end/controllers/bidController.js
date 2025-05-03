@@ -231,6 +231,9 @@ const deleteBid = async (req, res) => {
 // Get bids for current user
 const getMyBids = async (req, res) => {
   try {
+    console.log('getMyBids called'); // Debug log
+    console.log('User ID:', req.user?.id); // Debug log
+    
     if (!req.user?.id) {
       return res.status(401).json({ 
         success: false,
@@ -242,6 +245,8 @@ const getMyBids = async (req, res) => {
       .populate('productId', 'name currentPrice bidEndDate')
       .sort({ bidTime: -1 });
 
+    console.log('Found bids:', bids.length); // Debug log
+
     res.json({
       success: true,
       count: bids.length,
@@ -249,6 +254,7 @@ const getMyBids = async (req, res) => {
     });
 
   } catch (error) {
+    console.error('Error in getMyBids:', error); // Debug log
     res.status(500).json({
       success: false,
       message: error.message
@@ -302,6 +308,11 @@ const getBidsByProductId = async (req, res) => {
   }
 };
 
+// Add this new controller function
+
+
+// Don't forget to add it to exports
+
 module.exports = {
   createBid,
   getAllBids,
@@ -309,6 +320,7 @@ module.exports = {
   getBidById,
   updateBid,
   deleteBid,
-  getMyBids
+  getMyBids,
+ 
   // Remove getBidsForProduct if you're not using it
 };

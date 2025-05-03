@@ -7,6 +7,11 @@ const bidSchema = new mongoose.Schema({
   bidAmount: { type: Number },
   bidTime: { type: Date, default: Date.now },
   isWinningBid: { type: Boolean, default: false },
+  status: { 
+    type: String, 
+    enum: ["ongoing", "closed"],
+    default: "ongoing"
+  }
 });
 
 module.exports = mongoose.model("Bid", bidSchema);
